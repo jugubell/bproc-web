@@ -1,0 +1,40 @@
+web/node_modules
+
+# Output
+out/
+
+# Output frontend
+web/.output
+web/.vercel
+web/.netlify
+web/.wrangler
+web/.svelte-kit
+web/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Env frontend
+web/.env
+web/.env.*
+!web/.env.example
+!web/.env.test
+
+# Vite
+web/vite.config.js.timestamp-*
+web/vite.config.ts.timestamp-*
+
+# IDE
+.idea/
+.vscode
+
+# IDE frontend
+web/.idea/
+web/.vscode
