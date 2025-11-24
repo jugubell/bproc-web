@@ -23,11 +23,11 @@
 
 <script>
 	import { FileCheck, Binary, FileText, CircleQuestionMark, List } from '@lucide/svelte';
-	import { apiGet } from '$lib/index.js';
+	import { apiGet, apiPost } from '$lib/index.js';
 	import { editorDataStore } from '$lib/state.svelte.js';
 
 	async function getAndStore(str) {
-		let res = await apiGet(`http://localhost:8998/api/${str}`)
+		let res = await apiGet(`${str}`)
 		if (res.status === 200) {
 			let apiRes = res.data.message;
 			console.log(`Data received ${apiRes}`);
@@ -43,11 +43,36 @@
 		}
 	}
 
+	async function post(url) {
+		let res = await apiPost(url, window.localStorage.getItem("asmProgram"));
+		if (res.status === 200) {
+			let apiRes = res.data.message;
+			console.log(`Data received ${apiRes}`);
+			editorDataStore.update(state => ({
+				...state,
+				consoleValue: `${preprocess(apiRes)}\n`,
+			}));
+		} else {
+			editorDataStore.update(state => ({
+				...state,
+				consoleValue: `${res.message}\n`,
+			}))
+		}
+	}
+
+	function preprocess(msg) {
+		msg = msg.replace(/\u001B\[31m/g, '<span style="color: #da4141;">');
+		msg = msg.replace(/\u001B\[32m/g, '<span style="color: #2ca12c;">');
+		msg = msg.replace(/\u001B\[33m/g, '<span style="color: #fb8456">;">');
+		msg = msg.replace(/\u001B\[0m/g, '</span>');
+		return msg;
+	}
+
 </script>
 
 <div class="flex flex-row justify-between items-center w-full my-2 p-2 gap-x-3 border rounded-xl border-green-500 bg-green-50">
 	<div class="flex flex-row justify-start items-center">
-		<button><FileCheck />Verify</button>
+		<button onclick="{() => post('verify')}"><FileCheck />Verify</button>
 		<button><Binary />Compile</button>
 		<button><FileText />Generate File</button>
 	</div>

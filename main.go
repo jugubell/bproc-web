@@ -1,7 +1,7 @@
 /*
  * File: main.go
  * Project: bproc-web
- * Last modified: 2025-11-24 20:46
+ * Last modified: 2025-11-24 22:20
  *
  * This file: main.go is part of BProC-WEB project.
  *
@@ -25,6 +25,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"os"
 	"os/exec"
 
 	"github.com/gin-contrib/cors"
@@ -40,7 +42,7 @@ func main() {
 		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
 	}))
 
-	router.GET("/api/", func(c *gin.Context) {
+	router.GET("api", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "velkommen",
 		})
@@ -50,6 +52,80 @@ func main() {
 	routerGet("api", "instruction-set", router)
 	routerGet("api", "version", router)
 	routerGet("api", "is", router)
+
+	router.POST("/api/verify", func(c *gin.Context) {
+		var prog ProgramPayload
+
+		if err := c.ShouldBindJSON(&prog); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": err.Error(),
+				"type":    "error",
+			})
+			return
+		}
+
+		err := os.MkdirAll("tmp", 0o755)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Error creating tmp directory: %v\n", os.Stderr))
+			c.JSON(http.StatusOK, gin.H{
+				"message": fmt.Sprintf("Error creating tmp directory: %v\n. Error: %s", os.Stderr, err),
+				"type":    "error",
+			})
+			return
+		}
+
+		f, err := os.Create("tmp/prog.bpasm")
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Error creating tmp file: %v\n", os.Stderr))
+			c.JSON(http.StatusOK, gin.H{
+				"message": fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err),
+				"type":    "error",
+			})
+		}
+
+		defer func(f *os.File) {
+			err := f.Close()
+			if err != nil {
+				fmt.Println(fmt.Sprintf("Error closing tmp file: %v\n", os.Stderr))
+			}
+		}(f)
+
+		fcontent := []byte(prog.Program)
+
+		if _, err := f.Write(fcontent); err != nil {
+			fmt.Println(fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err))
+			c.JSON(http.StatusOK, gin.H{
+				"message": fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err),
+				"type":    "error",
+			})
+		}
+
+		var args = []string{
+			"-jar",
+			"libs/bproc-cli-v1_0.jar",
+			"-s",
+			"./tmp/prog.bpasm",
+		}
+
+		cmd := exec.Command("java", args...)
+		out, err := cmd.CombinedOutput()
+
+		var msgType string
+		var msgContent string
+
+		if err != nil {
+			msgType = "error"
+			msgContent = fmt.Sprintf("%s", err)
+		} else {
+			msgType = "info"
+			msgContent = fmt.Sprintf("%s", out)
+		}
+		c.JSON(200, gin.H{
+			"message": msgContent,
+			"type":    msgType,
+		})
+
+	})
 
 	err := router.Run("localhost:8998")
 	if err != nil {
@@ -82,4 +158,8 @@ func routerGet(prefix string, route string, router *gin.Engine) {
 			"type":    msgType,
 		})
 	})
+}
+
+type ProgramPayload struct {
+	Program string `json:"program" binding:"required"`
 }

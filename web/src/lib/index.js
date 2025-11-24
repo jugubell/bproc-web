@@ -25,11 +25,24 @@
 
 import axios from 'axios';
 
+const host = "http://localhost:8998/api"
+
 export async function apiGet(url) {
 	try {
-		let res = await axios.get(url);
+		let res = await axios.get(`${host}/${url}`);
 		console.log(res);
 		return res;
+	} catch (error) {
+		console.log(error);
+		return error;
+	}
+}
+
+export async function apiPost(url, data) {
+	try {
+		return await axios.post(`${host}/${url}`, {
+			program: data
+		});
 	} catch (error) {
 		console.log(error);
 		return error;

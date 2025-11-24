@@ -43,11 +43,13 @@
 		readStoredProgram();
 	})
 
+	console.log($editorDataStore.consoleValue);
+
 </script>
 
 <div class="flex w-full h-screen gap-x-2">
 	<textarea id="progArea" class="programInput w-1/2" oninput={update} bind:value={asmProgram}></textarea>
-	<pre class="programOutput w-1/2">{$editorDataStore.consoleValue}></pre>
+	<pre class="programOutput w-1/2">{@html $editorDataStore.consoleValue}></pre>
 </div>
 
 <style>

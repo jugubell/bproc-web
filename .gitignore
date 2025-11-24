@@ -38,3 +38,6 @@ web/vite.config.ts.timestamp-*
 # IDE frontend
 web/.idea/
 web/.vscode
+
+http/
+tmp/
