@@ -22,3 +22,16 @@
  */
 
 // place files you want to import through the `$lib` alias in this folder.
+
+import axios from 'axios';
+
+export async function apiGet(url) {
+	try {
+		let res = await axios.get(url);
+		console.log(res);
+		return res;
+	} catch (error) {
+		console.log(error);
+		return error;
+	}
+}

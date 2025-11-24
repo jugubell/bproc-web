@@ -23,6 +23,7 @@
 
 <script>
 	import bproc_logo from '$lib/assets/bproc_logo.svg';
+	import { Settings, Home } from '@lucide/svelte';
 </script>
 
 <header class="bg-gray-100 px-40">
@@ -33,8 +34,8 @@
 			</div>
 		</a>
 		<div class="flex flex-wrap gap-10 font-semibold text-lg">
-			<a href="/" class="hover:text-green-700 hover:scale-110">Home</a>
-			<a href="/settings" class="hover:text-green-700 hover:scale-110">Settings</a>
+			<a href="/" class="hover:text-green-700 hover:scale-110"><span class="flex flex-row gap-1 items-center"><Home />Home</span></a>
+			<a href="/settings" class="hover:text-green-700 hover:scale-110"><span class="flex flex-row gap-1 items-center"><Settings />Settings</span></a>
 		</div>
 	</nav>
 </header>

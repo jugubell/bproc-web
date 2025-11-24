@@ -23,6 +23,8 @@
 
 <script>
 	import { onMount } from 'svelte';
+	import { editorDataStore } from '$lib/state.svelte.js';
+	import { derived } from 'svelte/store';
 
 	let asmProgram = $state("");
 
@@ -44,13 +46,13 @@
 </script>
 
 <div class="flex w-full h-screen gap-x-2">
-	<textarea name="programInput" class="w-2/3" oninput={update} bind:value={asmProgram}></textarea>
-	<textarea name="programOutput" class="w-1/3" disabled></textarea>
+	<textarea id="progArea" class="programInput w-1/2" oninput={update} bind:value={asmProgram}></textarea>
+	<pre class="programOutput w-1/2">{$editorDataStore.consoleValue}></pre>
 </div>
 
 <style>
 	@import "tailwindcss";
-	textarea {
+	.programInput, .programOutput {
 			@apply
       border-2
 			rounded-xl

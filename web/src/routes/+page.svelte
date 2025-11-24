@@ -25,6 +25,13 @@
 	import Toolbar from '$lib/components/Toolbar.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import ProgramEditor from '$lib/components/ProgramEditor.svelte';
+	import { setContext } from 'svelte';
+
+	let cliHelp = $state({
+		message: ''
+	});
+
+	setContext('consoleDisplay', cliHelp.message);
 </script>
 
 <PageTitle title="BProC Compiler" />

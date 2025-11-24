@@ -22,14 +22,39 @@
   -->
 
 <script>
-	import { FileCheck, Binary, FileText } from '@lucide/svelte';
+	import { FileCheck, Binary, FileText, CircleQuestionMark, List } from '@lucide/svelte';
+	import { apiGet } from '$lib/index.js';
+	import { editorDataStore } from '$lib/state.svelte.js';
+
+	async function getAndStore(str) {
+		let res = await apiGet(`http://localhost:8998/api/${str}`)
+		if (res.status === 200) {
+			let apiRes = res.data.message;
+			console.log(`Data received ${apiRes}`);
+			editorDataStore.update(state => ({
+				...state,
+				consoleValue: `${apiRes}\n`,
+			}));
+		} else {
+			editorDataStore.update(state => ({
+				...state,
+				consoleValue: `${res.message}\n`,
+			}))
+		}
+	}
 
 </script>
 
-<div class="flex flex-row justify-start items-center w-full my-2 p-2 gap-x-3 border rounded-xl border-green-500 bg-green-50">
+<div class="flex flex-row justify-between items-center w-full my-2 p-2 gap-x-3 border rounded-xl border-green-500 bg-green-50">
+	<div class="flex flex-row justify-start items-center">
 		<button><FileCheck />Verify</button>
 		<button><Binary />Compile</button>
 		<button><FileText />Generate File</button>
+	</div>
+	<div class="flex flex-row justify-start items-center">
+		<button onclick={() => getAndStore('is')}><List />Instructions</button>
+		<button onclick={() => getAndStore('help')}><CircleQuestionMark />Help</button>
+	</div>
 </div>
 
 <style>
