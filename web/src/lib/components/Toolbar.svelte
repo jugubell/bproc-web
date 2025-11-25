@@ -55,7 +55,7 @@
 		} else {
 			editorDataStore.update(state => ({
 				...state,
-				consoleValue: `${res.message}\n`,
+				consoleValue: `${preprocess(res.message)}\n`,
 			}))
 		}
 	}

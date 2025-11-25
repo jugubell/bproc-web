@@ -22,14 +22,35 @@
   -->
 
 <script>
-	import { onMount } from 'svelte';
 	import { editorDataStore } from '$lib/state.svelte.js';
-	import { derived } from 'svelte/store';
+	import LineNumber from '$lib/components/LineNumber.svelte';
+	import { onMount, tick } from 'svelte';
 
 	let asmProgram = $state("");
+	let programLine = $state(0);
+	let cursorLineNumber = $state(0);
 
 	function update() {
 		window.localStorage.setItem("asmProgram", asmProgram);
+		programLine = getLineNumber();
+		cursorLineNumber = getCursorLineNumber();
+		updateCursor();
+		updateTextareaHeight();
+	}
+
+	function getLineNumber() {
+		let textareaVal = document.getElementById("progArea").value;
+		return (textareaVal === null || textareaVal === "") ? 0 : textareaVal.split(/\n/).length;
+	}
+
+	function getCursorLineNumber() {
+		let textarea = document.getElementById("progArea");
+		const textToCusrsor = textarea.value.slice(0, textarea.selectionStart);
+		return textToCusrsor.split(/\n/).length;
+	}
+
+	function updateCursor() {
+		cursorLineNumber = getCursorLineNumber();
 	}
 
 	function readStoredProgram() {
@@ -39,17 +60,27 @@
 		}
 	}
 
-	onMount(() => {
-		readStoredProgram();
-	})
+	function updateTextareaHeight() {
+		let textarea = document.getElementById("progArea");
+		textarea.style.height = textarea.scrollHeight + "px";
+	}
 
-	console.log($editorDataStore.consoleValue);
+	onMount(async () => {
+		readStoredProgram();
+		await tick();
+		programLine = getLineNumber();
+		cursorLineNumber = getCursorLineNumber();
+		updateTextareaHeight();
+	})
 
 </script>
 
 <div class="flex w-full h-screen gap-x-2">
-	<textarea id="progArea" class="programInput w-1/2" oninput={update} bind:value={asmProgram}></textarea>
-	<pre class="programOutput w-1/2">{@html $editorDataStore.consoleValue}></pre>
+	<div class="programInput w-1/2 flex flex-row gap-1 px-1">
+		<LineNumber lineNumber={programLine} highlight={cursorLineNumber} />
+		<textarea id="progArea" oninput={update} bind:value={asmProgram} onmouseup={updateCursor} onkeyup={updateCursor}></textarea>
+	</div>
+	<pre class="programOutput w-1/2 px-5">{@html $editorDataStore.consoleValue}></pre>
 </div>
 
 <style>
@@ -58,7 +89,7 @@
 			@apply
       border-2
 			rounded-xl
-			p-5
+			py-5
 			border-green-500
       focus:outline
       focus:outline-green-200
@@ -67,8 +98,26 @@
       focus:inset-shadow-sm
       focus:inset-shadow-gray-200
 			min-w-0
-			resize-y
 			overflow-auto
 			;
+	}
+	.programInput::-webkit-scrollbar {
+			display: none;
+			width: 0;
+			height: 0;
+	}
+
+	textarea {
+			@apply
+			border
+			rounded-md
+      w-full
+			h-full
+			p-2
+		border-green-500
+		focus:outline-green-200
+			font-mono
+			overflow-y-hidden
+			resize-none;
 	}
 </style>
