@@ -32,6 +32,7 @@
 	},
 	"dependencies": {
 		"@lucide/svelte": "^0.554.0",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"axios": "^1.13.2"
 	}
 }

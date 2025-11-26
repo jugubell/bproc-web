@@ -1,7 +1,7 @@
 /*
  * File: main.go
  * Project: bproc-web
- * Last modified: 2025-11-25 21:42
+ * Last modified: 2025-11-26 15:12
  *
  * This file: main.go is part of BProC-WEB project.
  *
@@ -25,44 +25,110 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
-var apiPrefix string = "api"
-var host string = "localhost"
-var port string = "8998"
-var originhost string = "http://localhost"
-var originport string = "5173"
-var jarName string = "bproc-cli-v1_0.jar"
+var (
+	AppEnv     string
+	ApiPrefix  string
+	ApiHost    string
+	ApiPort    string
+	OriginHost string
+	OriginPort string
+	StaticPath string
+	JarPath    string
+)
 
 type ProgramPayload struct {
 	Program string `json:"program" binding:"required"`
 }
 
 func main() {
-	router := gin.Default()
+	//loading env vars
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("Error loading .env file")
+	}
 
-	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{fmt.Sprintf("%s:%s", originhost, originport)},
-		AllowMethods: []string{"GET", "POST"},
-		AllowHeaders: []string{"Origin", "Content-Type"},
-	}))
+	AppEnv = os.Getenv("APP_ENV")
+	ApiPrefix = os.Getenv("API_PREFIX")
+	ApiHost = os.Getenv("API_HOST")
+	ApiPort = os.Getenv("API_PORT")
+	OriginHost = os.Getenv("ORIGIN_HOST")
+	OriginPort = os.Getenv("ORIGIN_PORT")
+	StaticPath = os.Getenv("STATIC_PATH")
+	JarPath = os.Getenv("JAR_PATH")
 
-	router.GET("/", getRoot)
-	router.GET(fmt.Sprintf("/%s", apiPrefix), getApiHelp)
-	router.GET(fmt.Sprintf("/%s/help", apiPrefix), func(c *gin.Context) { getInfo(c, "--help") })
-	router.GET(fmt.Sprintf("/%s/is", apiPrefix), func(c *gin.Context) { getInfo(c, "--instruction-set") })
-	router.GET(fmt.Sprintf("/%s/version", apiPrefix), func(c *gin.Context) { getInfo(c, "--version") })
+	var router *gin.Engine
 
-	router.POST(fmt.Sprintf("/%s/verify", apiPrefix), postVerify)
+	if AppEnv == "prod" {
+		gin.SetMode(gin.ReleaseMode)
+
+		router = gin.New()
+		router.Use(gin.Recovery())
+
+		log.Println("Gin in Release mode.")
+
+		if err := router.SetTrustedProxies([]string{"127.0.0.1", "::1", "192.168.0.0/16", "172.16.0.0/12", "10.0.0.0/8"}); err != nil {
+			log.Println("Failed to set trusted proxies: ", err)
+		}
+
+	} else {
+		router = gin.Default()
+		log.Println("Gin in Default mode.")
+		router.Use(cors.New(cors.Config{
+			AllowOrigins: []string{fmt.Sprintf("%s:%s", OriginHost, OriginPort)},
+			AllowMethods: []string{"GET", "POST"},
+			AllowHeaders: []string{"Origin", "Content-Type"},
+		}))
+		log.Printf("Allowed origin: %s on port %s\n", OriginHost, OriginPort)
+	}
+
+	api := router.Group(ApiPrefix)
+	{
+		api.GET("/", getApiHelp)
+		api.GET("/help", func(c *gin.Context) { getInfo(c, "--help") })
+		api.GET("/is", func(c *gin.Context) { getInfo(c, "--instruction-set") })
+		api.GET("/version", func(c *gin.Context) { getInfo(c, "--version") })
+
+		api.POST("/verify", postVerify)
+	}
+
+	// serving static on prod
+	if AppEnv == "prod" {
+
+		router.GET("/", func(c *gin.Context) {
+			c.File(filepath.Join(StaticPath, "index.html"))
+		})
+
+		router.NoRoute(func(c *gin.Context) {
+			requestedFile := c.Request.URL.Path
+			filePath := filepath.Join(StaticPath, requestedFile)
+			_, err := os.Stat(filePath)
+
+			if err == nil {
+				c.File(filePath)
+				return
+			}
+
+			c.File(filepath.Join(StaticPath, "index.html"))
+		})
+		log.Println("Running on prod http://" + ApiHost + ":" + ApiPort)
+	} else {
+		log.Println("Running in dev mode on:")
+		log.Println("Backend: http://" + ApiHost + ":" + ApiPort)
+		log.Println("Frontend: " + OriginHost + ":" + OriginPort)
+	}
 
 	// run server
-	err := router.Run(fmt.Sprintf("%s:%s", host, port))
+	err := router.Run(fmt.Sprintf("%s:%s", ApiHost, ApiPort))
 	if err != nil {
 		return
 	}
@@ -87,12 +153,10 @@ func prepareExec(args ...string) (string, string) {
 func execCli(args ...string) ([]byte, error) {
 	var cliArgs = []string{
 		"-jar",
-		fmt.Sprintf("libs/%s", jarName),
+		JarPath,
 	}
 
 	cliArgs = append(cliArgs, args...)
-
-	fmt.Println(cliArgs)
 
 	cmd := exec.Command("java", cliArgs...)
 	out, err := cmd.CombinedOutput()
@@ -145,7 +209,7 @@ func postVerify(c *gin.Context) {
 
 	err := os.MkdirAll("tmp", 0o755)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error creating tmp directory: %v\n", os.Stderr))
+		log.Println(fmt.Sprintf("Error creating tmp directory: %v\n", os.Stderr))
 		c.JSON(http.StatusOK, gin.H{
 			"message": fmt.Sprintf("Error creating tmp directory: %v\n. Error: %s", os.Stderr, err),
 			"type":    "error",
@@ -155,7 +219,7 @@ func postVerify(c *gin.Context) {
 
 	f, err := os.Create("tmp/prog.bpasm")
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error creating tmp file: %v\n", os.Stderr))
+		log.Println(fmt.Sprintf("Error creating tmp file: %v\n", os.Stderr))
 		c.JSON(http.StatusOK, gin.H{
 			"message": fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err),
 			"type":    "error",
@@ -165,14 +229,14 @@ func postVerify(c *gin.Context) {
 	defer func(f *os.File) {
 		err := f.Close()
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Error closing tmp file: %v\n", os.Stderr))
+			log.Println(fmt.Sprintf("Error closing tmp file: %v\n", os.Stderr))
 		}
 	}(f)
 
 	fcontent := []byte(prog.Program)
 
 	if _, err := f.Write(fcontent); err != nil {
-		fmt.Println(fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err))
+		log.Println(fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err))
 		c.JSON(http.StatusOK, gin.H{
 			"message": fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err),
 			"type":    "error",

@@ -25,7 +25,7 @@
 
 import axios from 'axios';
 
-const host = "http://localhost:8998/api"
+const host = "http://127.0.0.1:8998/api"
 
 export async function apiGet(url) {
 	try {
