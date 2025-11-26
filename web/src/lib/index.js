@@ -25,7 +25,9 @@
 
 import axios from 'axios';
 
-const host = "http://127.0.0.1:8998/api"
+const baseUrl = import.meta.env.VITE_BASE_URL || ''
+const apiPrefix = "api"
+const host = `${baseUrl}/${apiPrefix}`
 
 export async function apiGet(url) {
 	try {
