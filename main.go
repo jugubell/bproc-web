@@ -1,7 +1,7 @@
 /*
  * File: main.go
  * Project: bproc-web
- * Last modified: 2025-11-28 23:50
+ * Last modified: 2025-11-29 00:45
  *
  * This file: main.go is part of BProC-WEB project.
  *
@@ -291,7 +291,12 @@ func readProgramExample(c *gin.Context) {
 
 	files, err := os.ReadDir(ExamplesPath)
 	if err != nil {
-		log.Fatalf("Error reading the directory: %s\n", err)
+		log.Printf("Error reading the directory: %s\n", err)
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("Error reading the directory: %s\n", err),
+			"type":    "error",
+		})
+		return
 	}
 
 	filesLen = len(files)
