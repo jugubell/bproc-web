@@ -28,6 +28,6 @@
 
 <footer>
 	<div class="flex justify-center items-center py-5 mb-0">
-		Copyright &copy; { year } BProC CLI - BProC Web
+		Copyright &copy; { year } BProC CLI - BProC Web - Jugurtha BELLAGH
 	</div>
 </footer>

@@ -23,7 +23,7 @@
 
 <script>
 	import { FileCheck, Binary, FileText, CircleQuestionMark, List } from '@lucide/svelte';
-	import { apiGet, apiPost, getCompileType } from '$lib/index.js';
+	import { apiGet, apiPost, getCompileType, notImplemented } from '$lib/index.js';
 	import { editorDataStore } from '$lib/state.svelte.js';
 	import { onMount } from 'svelte';
 
@@ -98,8 +98,8 @@
 <div class="flex flex-row justify-between items-center w-full my-2 p-2 gap-x-3 border rounded-xl border-green-500 bg-green-50">
 	<div class="flex flex-row justify-start items-center">
 		<button onclick="{() => post('verify')}"><FileCheck />Verify</button>
-		<button><Binary />Compile</button>
-		<button><FileText />Generate File</button>
+		<button onclick="{() => post('compile')}"><Binary />Compile</button>
+		<button onclick="{() => notImplemented()}"><FileText />Generate File</button>
 	</div>
 	<div id="compileTypeRadio" class="flex flex-row justify-start items-center gap-x-3">
 		<div class="flex items-center">
@@ -115,7 +115,7 @@
 			<input type="radio"	name="compileType" id="cmpVhdl" onchange={storeCompileType}><label for="cmpVhdl">VHDL</label>
 		</div>
 		<div class="flex items-center">
-			<input type="radio"	name="compileType" id="cmpVerilog" onchange={storeCompileType}><label for="cmpVerilog">Verilog</label>
+			<input type="radio"	name="compileType" id="cmpVrlg" onchange={storeCompileType}><label for="cmpVrlg">Verilog</label>
 		</div>
 	</div>
 	<div class="flex flex-row justify-start items-center">

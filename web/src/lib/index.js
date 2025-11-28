@@ -24,6 +24,7 @@
 // place files you want to import through the `$lib` alias in this folder.
 
 import axios from 'axios';
+import { editorDataStore } from '$lib/state.svelte.js';
 
 const baseUrl = import.meta.env.VITE_BASE_URL || ''
 const apiPrefix = "api"
@@ -58,4 +59,8 @@ export function getCompileType() {
 		}
 	}
 	return null;
+}
+
+export function notImplemented() {
+	alert("Feature not implemented yet!");
 }

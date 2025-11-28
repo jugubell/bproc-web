@@ -1,7 +1,7 @@
 /*
  * File: main.go
  * Project: bproc-web
- * Last modified: 2025-11-28 22:26
+ * Last modified: 2025-11-28 23:50
  *
  * This file: main.go is part of BProC-WEB project.
  *
@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -38,15 +39,16 @@ import (
 )
 
 var (
-	AppEnv       string
-	ApiPrefix    string
-	ApiHost      string
-	ApiPort      string
-	OriginHost   string
-	OriginPort   string
-	StaticPath   string
-	JarPath      string
-	ExamplesPath string
+	AppEnv             string
+	ApiPrefix          string
+	ApiHost            string
+	ApiPort            string
+	OriginHost         string
+	OriginPort         string
+	StaticPath         string
+	JarPath            string
+	ExamplesPath       string
+	AllowedCompileType = []string{"bin", "hex", "hexv3", "vhdl", "vrlg"}
 )
 
 type ProgramPayload struct {
@@ -103,7 +105,8 @@ func main() {
 		api.GET("/version", func(c *gin.Context) { getInfo(c, "--version") })
 		api.GET("/example", readProgramExample)
 
-		api.POST("/verify", postVerify)
+		api.POST("/verify", func(c *gin.Context) { postCompile(c, "verify") })
+		api.POST("/compile", func(c *gin.Context) { postCompile(c, "compile") })
 	}
 
 	// serving static on prod
@@ -163,6 +166,11 @@ func execCli(args ...string) ([]byte, error) {
 
 	cliArgs = append(cliArgs, args...)
 
+	log.Printf("Args length: %s\n", len(cliArgs))
+	for _, arg := range cliArgs {
+		log.Printf("Arg: %s\n", arg)
+	}
+
 	cmd := exec.Command("java", cliArgs...)
 	out, err := cmd.CombinedOutput()
 	return out, err
@@ -201,12 +209,24 @@ func getInfo(c *gin.Context, info string) {
 	})
 }
 
-func postVerify(c *gin.Context) {
+func postCompile(c *gin.Context, action string) {
 	var prog ProgramPayload
+	var msgContent string
+	var msgType string
 
 	if err := c.ShouldBindJSON(&prog); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": err.Error(),
+			"type":    "error",
+		})
+		return
+	}
+
+	log.Printf("Program type: %s\n", prog.Type)
+
+	if !slices.Contains(AllowedCompileType, prog.Type) && action != "verify" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": fmt.Sprintf("%s type is not allowed", prog.Type),
 			"type":    "error",
 		})
 		return
@@ -248,7 +268,14 @@ func postVerify(c *gin.Context) {
 		})
 	}
 
-	msgType, msgContent := prepareExec("-s", fmt.Sprintf("%s", "./tmp/prog.bpasm"))
+	switch action {
+	case "verify":
+		msgType, msgContent = prepareExec("-s", fmt.Sprintf("%s", "./tmp/prog.bpasm"))
+		break
+	case "compile":
+		msgType, msgContent = prepareExec("-g", fmt.Sprintf("%s", "./tmp/prog.bpasm"), fmt.Sprintf("--%s", prog.Type))
+		break
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": msgContent,

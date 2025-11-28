@@ -27,5 +27,5 @@
 
 <PageTitle title="Settings" />
 <div class="flex w-full h-screen">
-
+<p class="text-md font-semibold">Not yet implemented ...</p>
 </div>
