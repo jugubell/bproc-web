@@ -1,7 +1,7 @@
 /*
  * File: main.go
  * Project: bproc-web
- * Last modified: 2025-11-26 15:12
+ * Last modified: 2025-11-28 22:26
  *
  * This file: main.go is part of BProC-WEB project.
  *
@@ -26,6 +26,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -37,18 +38,20 @@ import (
 )
 
 var (
-	AppEnv     string
-	ApiPrefix  string
-	ApiHost    string
-	ApiPort    string
-	OriginHost string
-	OriginPort string
-	StaticPath string
-	JarPath    string
+	AppEnv       string
+	ApiPrefix    string
+	ApiHost      string
+	ApiPort      string
+	OriginHost   string
+	OriginPort   string
+	StaticPath   string
+	JarPath      string
+	ExamplesPath string
 )
 
 type ProgramPayload struct {
 	Program string `json:"program" binding:"required"`
+	Type    string `json:"type"`
 }
 
 func main() {
@@ -65,6 +68,7 @@ func main() {
 	OriginPort = os.Getenv("ORIGIN_PORT")
 	StaticPath = os.Getenv("STATIC_PATH")
 	JarPath = os.Getenv("JAR_PATH")
+	ExamplesPath = os.Getenv("EXAMPLES_PATH")
 
 	var router *gin.Engine
 
@@ -97,6 +101,7 @@ func main() {
 		api.GET("/help", func(c *gin.Context) { getInfo(c, "--help") })
 		api.GET("/is", func(c *gin.Context) { getInfo(c, "--instruction-set") })
 		api.GET("/version", func(c *gin.Context) { getInfo(c, "--version") })
+		api.GET("/example", readProgramExample)
 
 		api.POST("/verify", postVerify)
 	}
@@ -244,6 +249,40 @@ func postVerify(c *gin.Context) {
 	}
 
 	msgType, msgContent := prepareExec("-s", fmt.Sprintf("%s", "./tmp/prog.bpasm"))
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": msgContent,
+		"type":    msgType,
+	})
+}
+
+func readProgramExample(c *gin.Context) {
+	var msgContent string
+	var msgType string
+	var filesLen int
+	var randIdx int
+
+	files, err := os.ReadDir(ExamplesPath)
+	if err != nil {
+		log.Fatalf("Error reading the directory: %s\n", err)
+	}
+
+	filesLen = len(files)
+	randIdx = rand.Intn(filesLen)
+
+	log.Printf("%d file(s) found. Selected index: %d. Selected file name: %s\n", filesLen, randIdx, files[randIdx].Name())
+
+	data, err := os.ReadFile(fmt.Sprintf("%s/%s", ExamplesPath, files[randIdx].Name()))
+
+	if err != nil {
+		log.Println(fmt.Sprintf("Error reading example file: %v\n", os.Stderr))
+		msgContent = ""
+		msgType = "error"
+	}
+
+	log.Println("File example read.")
+	msgContent = string(data)
+	msgType = "info"
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": msgContent,

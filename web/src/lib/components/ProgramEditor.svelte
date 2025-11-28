@@ -25,6 +25,7 @@
 	import { editorDataStore } from '$lib/state.svelte.js';
 	import LineNumber from '$lib/components/LineNumber.svelte';
 	import { onMount, tick } from 'svelte';
+	import { apiGet } from '$lib/index.js';
 
 	let asmProgram = $state("");
 	let programLine = $state(0);
@@ -53,10 +54,16 @@
 		cursorLineNumber = getCursorLineNumber();
 	}
 
-	function readStoredProgram() {
+	async function readStoredProgram() {
 		let storedProgram = window.localStorage.getItem("asmProgram");
 		if (storedProgram) {
 			asmProgram = storedProgram;
+		} else {
+			const progEx = await getProgramExample();
+			if(progEx && progEx !== null) {
+				asmProgram = progEx;
+				update();
+			}
 		}
 	}
 
@@ -65,12 +72,35 @@
 		textarea.style.height = textarea.scrollHeight + "px";
 	}
 
+	function loadCompileType() {
+		const compileType = window.localStorage.getItem("compileType");
+		const inputGroup = document.getElementById("compileTypeRadio");
+		for(const inputDiv of inputGroup.querySelectorAll("div")) {
+			const input = inputDiv.querySelector("input");
+			input.checked = input && (input.id.toLowerCase() === `cmp${compileType.toLowerCase()}`);
+		}
+	}
+
+	async function getProgramExample() {
+		const res = await apiGet('example');
+		if(res.status === 200) {
+			return res.data.message;
+		} else {
+			editorDataStore.update(state => ({
+				...state,
+				consoleValue: `Unable to get program example.\n${res.message}\n`,
+			}))
+			return null;
+		}
+	}
+
 	onMount(async () => {
-		readStoredProgram();
+		await readStoredProgram();
 		await tick();
 		programLine = getLineNumber();
 		cursorLineNumber = getCursorLineNumber();
 		updateTextareaHeight();
+		loadCompileType();
 	})
 
 </script>

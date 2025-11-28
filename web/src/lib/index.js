@@ -42,11 +42,20 @@ export async function apiGet(url) {
 
 export async function apiPost(url, data) {
 	try {
-		return await axios.post(`${host}/${url}`, {
-			program: data
-		});
+		return await axios.post(`${host}/${url}`, data);
 	} catch (error) {
 		console.log(error);
 		return error;
 	}
+}
+
+export function getCompileType() {
+	const typeGroup = document.getElementById("compileTypeRadio");
+	for(const inputDiv of typeGroup.querySelectorAll("div")) {
+		const input = inputDiv.querySelector("input");
+		if(input && input.checked) {
+			return input.id.toLowerCase().replace(/cmp/g, "");
+		}
+	}
+	return null;
 }

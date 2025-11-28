@@ -23,8 +23,9 @@
 
 <script>
 	import { FileCheck, Binary, FileText, CircleQuestionMark, List } from '@lucide/svelte';
-	import { apiGet, apiPost } from '$lib/index.js';
+	import { apiGet, apiPost, getCompileType } from '$lib/index.js';
 	import { editorDataStore } from '$lib/state.svelte.js';
+	import { onMount } from 'svelte';
 
 	async function getAndStore(str) {
 		let res = await apiGet(`${str}`)
@@ -43,22 +44,42 @@
 		}
 	}
 
+	function storeCompileType() {
+		window.localStorage.setItem("compileType", getCompileType());
+	}
+
 	async function post(url) {
-		let res = await apiPost(url, window.localStorage.getItem("asmProgram"));
-		if (res.status === 200) {
-			let apiRes = res.data.message;
-			console.log(`Data received ${apiRes}`);
-			editorDataStore.update(state => ({
-				...state,
-				consoleValue: `${preprocess(apiRes)}\n`,
-			}));
+		let data = {
+			program: window.localStorage.getItem("asmProgram"),
+			type: url === "verify" ? null : getCompileType()
+		}
+
+		console.log(data.program.value)
+
+		if(data.program && data.program !== "") {
+			let res = await apiPost(url, data);
+			if (res.status === 200) {
+				let apiRes = res.data.message;
+				console.log(`Data received ${apiRes}`);
+				editorDataStore.update(state => ({
+					...state,
+					consoleValue: `${preprocess(apiRes)}\n`,
+				}));
+			} else {
+				editorDataStore.update(state => ({
+					...state,
+					consoleValue: `${preprocess(res.message)}\n`,
+				}))
+			}
 		} else {
 			editorDataStore.update(state => ({
 				...state,
-				consoleValue: `${preprocess(res.message)}\n`,
+				consoleValue: "<span style=\"color: #fb8456;\">Program empty, write some code, then try again</span>\n",
 			}))
 		}
 	}
+
+
 
 	function preprocess(msg) {
 		msg = msg.replace(/\u001B\[31m/g, '<span style="color: #da4141;">');
@@ -68,6 +89,10 @@
 		return msg;
 	}
 
+	onMount(() => {
+		console.log(getCompileType());
+	})
+
 </script>
 
 <div class="flex flex-row justify-between items-center w-full my-2 p-2 gap-x-3 border rounded-xl border-green-500 bg-green-50">
@@ -75,6 +100,23 @@
 		<button onclick="{() => post('verify')}"><FileCheck />Verify</button>
 		<button><Binary />Compile</button>
 		<button><FileText />Generate File</button>
+	</div>
+	<div id="compileTypeRadio" class="flex flex-row justify-start items-center gap-x-3">
+		<div class="flex items-center">
+			<input type="radio"	name="compileType" id="cmpBin" checked onchange={storeCompileType}><label for="cmpBin">Binary</label>
+		</div>
+		<div class="flex items-center">
+			<input type="radio"	name="compileType" id="cmpHex" onchange={storeCompileType}><label for="cmpHex">Hex</label>
+		</div>
+		<div class="flex items-center">
+			<input type="radio"	name="compileType" id="cmpHexV3" onchange={storeCompileType}><label for="cmpHexV3">Hex V3</label>
+		</div>
+		<div class="flex items-center">
+			<input type="radio"	name="compileType" id="cmpVhdl" onchange={storeCompileType}><label for="cmpVhdl">VHDL</label>
+		</div>
+		<div class="flex items-center">
+			<input type="radio"	name="compileType" id="cmpVerilog" onchange={storeCompileType}><label for="cmpVerilog">Verilog</label>
+		</div>
 	</div>
 	<div class="flex flex-row justify-start items-center">
 		<button onclick={() => getAndStore('is')}><List />Instructions</button>
@@ -102,5 +144,23 @@
       items-center
       font-semibold
       text-gray-600;
+	}
+	label {
+			@apply
+			text-gray-600
+			font-semibold
+			pl-2;
+	}
+	input[type="radio"] {
+			@apply
+			appearance-none
+			bg-transparent
+			checked:bg-green-600
+			rounded-sm
+			outline-offset-2
+			outline-1
+			outline-green-500
+			h-4
+			w-4;
 	}
 </style>
