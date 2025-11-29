@@ -23,7 +23,7 @@
 
 <script>
 	import { FileCheck, Binary, FileText, CircleQuestionMark, List } from '@lucide/svelte';
-	import { apiGet, apiPost, getCompileType, notImplemented } from '$lib/index.js';
+	import { apiGet, apiPost, getCompileType, notImplemented, getAsmProgram } from '$lib/index.js';
 	import { editorDataStore } from '$lib/state.svelte.js';
 	import { onMount } from 'svelte';
 
@@ -50,7 +50,7 @@
 
 	async function post(url) {
 		let data = {
-			program: window.localStorage.getItem("asmProgram"),
+			program: getAsmProgram(),
 			type: url === "verify" ? null : getCompileType()
 		}
 

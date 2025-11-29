@@ -1,7 +1,7 @@
 /*
  * File: main.go
  * Project: bproc-web
- * Last modified: 2025-11-29 00:45
+ * Last modified: 2025-11-29 16:10
  *
  * This file: main.go is part of BProC-WEB project.
  *
@@ -32,9 +32,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
 
@@ -48,6 +50,7 @@ var (
 	StaticPath         string
 	JarPath            string
 	ExamplesPath       string
+	TmpPath            string
 	AllowedCompileType = []string{"bin", "hex", "hexv3", "vhdl", "vrlg"}
 )
 
@@ -71,6 +74,7 @@ func main() {
 	StaticPath = os.Getenv("STATIC_PATH")
 	JarPath = os.Getenv("JAR_PATH")
 	ExamplesPath = os.Getenv("EXAMPLES_PATH")
+	TmpPath = os.Getenv("TMP_PATH")
 
 	var router *gin.Engine
 
@@ -166,10 +170,7 @@ func execCli(args ...string) ([]byte, error) {
 
 	cliArgs = append(cliArgs, args...)
 
-	log.Printf("Args length: %s\n", len(cliArgs))
-	for _, arg := range cliArgs {
-		log.Printf("Arg: %s\n", arg)
-	}
+	log.Printf("Executing command: java %s\n", strings.Join(cliArgs, " "))
 
 	cmd := exec.Command("java", cliArgs...)
 	out, err := cmd.CombinedOutput()
@@ -232,21 +233,23 @@ func postCompile(c *gin.Context, action string) {
 		return
 	}
 
-	err := os.MkdirAll("tmp", 0o755)
+	err := os.MkdirAll(TmpPath, 0o755)
 	if err != nil {
 		log.Println(fmt.Sprintf("Error creating tmp directory: %v\n", os.Stderr))
 		c.JSON(http.StatusOK, gin.H{
-			"message": fmt.Sprintf("Error creating tmp directory: %v\n. Error: %s", os.Stderr, err),
+			"message": fmt.Sprintf("Error creating tmp directory: %v\nError: %s", os.Stderr, err),
 			"type":    "error",
 		})
 		return
 	}
 
-	f, err := os.Create("tmp/prog.bpasm")
+	tmpFileName := fmt.Sprintf("%s/prog%s.bpasm", TmpPath, genRandStr(16))
+
+	f, err := os.Create(tmpFileName)
 	if err != nil {
 		log.Println(fmt.Sprintf("Error creating tmp file: %v\n", os.Stderr))
 		c.JSON(http.StatusOK, gin.H{
-			"message": fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err),
+			"message": fmt.Sprintf("Error creating tmp file: %v\nError: %s", os.Stderr, err),
 			"type":    "error",
 		})
 	}
@@ -261,20 +264,26 @@ func postCompile(c *gin.Context, action string) {
 	fcontent := []byte(prog.Program)
 
 	if _, err := f.Write(fcontent); err != nil {
-		log.Println(fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err))
+		log.Println(fmt.Sprintf("Error creating tmp file: %v\nError: %s", os.Stderr, err))
 		c.JSON(http.StatusOK, gin.H{
-			"message": fmt.Sprintf("Error creating tmp file: %v\n. Error: %s", os.Stderr, err),
+			"message": fmt.Sprintf("Error creating tmp file: %v\nError: %s", os.Stderr, err),
 			"type":    "error",
 		})
 	}
 
 	switch action {
 	case "verify":
-		msgType, msgContent = prepareExec("-s", fmt.Sprintf("%s", "./tmp/prog.bpasm"))
+		msgType, msgContent = prepareExec("-s", tmpFileName)
 		break
 	case "compile":
-		msgType, msgContent = prepareExec("-g", fmt.Sprintf("%s", "./tmp/prog.bpasm"), fmt.Sprintf("--%s", prog.Type))
+		msgType, msgContent = prepareExec("-g", tmpFileName, fmt.Sprintf("--%s", prog.Type))
 		break
+	}
+
+	if err := os.Remove(tmpFileName); err != nil {
+		log.Println(fmt.Sprintf("Error removing tmp file: %s\nError: %v / %v\n", tmpFileName, os.Stderr, err))
+	} else {
+		log.Println(fmt.Sprintf("Removed tmp file: %s", tmpFileName))
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -320,4 +329,8 @@ func readProgramExample(c *gin.Context) {
 		"message": msgContent,
 		"type":    msgType,
 	})
+}
+
+func genRandStr(n int) string {
+	return uuid.NewString()[:n]
 }
