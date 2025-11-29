@@ -47,9 +47,9 @@ WORKDIR /app
 
 COPY --from=be_builder /app/bprocserver /usr/local/bin/bprocserver
 COPY --from=fe_builder /app/bproc-web/web/dist/ /app/web/
+COPY --from=fe_builder /app/bproc-web/examples/ /app/examples/
 COPY --from=jar_builder /app/bproc-cli/target/*.jar /app/libs/bproc.jar
 COPY .env.bprocprod ./.env
-COPY examples /app/examples/
 
 EXPOSE 8998
 
